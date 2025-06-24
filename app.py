@@ -422,6 +422,13 @@ def update_api_key():
         conn.close()
 
 
+@app.route("/history", methods=["GET"])
+def history():
+    user_id = request.args.get("userId")
+    history = get_chat_history(user_id)
+    return jsonify(history)
+
+
 if __name__ == "__main__":
     from flask_cors import CORS
 

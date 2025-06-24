@@ -397,3 +397,29 @@ body {
     opacity: 1;
   }
 }
+/* Compact Markdown rendering */
+.markdown-body p {
+  margin: 0.3em 0 !important;
+}
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.3em 0 0.3em 1.2em !important;
+  padding: 0 0 0 1.2em !important;
+}
+.markdown-body li {
+  margin: 0.1em 0 !important;
+  padding: 0 !important;
+}
+/* Ultra-compact Markdown rendering */
+.markdown-body p {
+  margin: 0.08em 0 !important;
+}
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0.08em 0 0.08em 1em !important;
+  padding: 0 0 0 1em !important;
+}
+.markdown-body li {
+  margin: 0 !important;
+  padding: 0 !important;
+}
