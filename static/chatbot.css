@@ -145,7 +145,8 @@ body {
   padding: 24px 32px 0 32px;
   display: flex;
   flex-direction: column;
-  height: 450px;
+  height: 100vh; /* Set to full viewport height */
+  max-height: calc(100vh - 180px); /* Adjust for header and input area */
   max-width: 100%;
   background: none;
   padding-bottom: 120px; /* Add padding to avoid overlap */
