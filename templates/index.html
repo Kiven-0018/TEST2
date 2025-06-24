@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learnix AI Tutor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
+    <style>
+        #loading {
+            text-align: center;
+            padding: 1.5em;
+            font-size: 1rem;
+            color: gray;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sideImg">
+            <img src="https://dahetalk.com/wp-content/uploads/2018/04/ai-governance-lead.jpg" alt="" class="sideM">
+            <h2>Learnix</h2>
+
+        </div>
+        <label for="apiKey">API Key</label>
+        <div style="position: relative;">
+            <input type="password" id="apiKey" placeholder="Enter API Key" />
+            <button id="toggleKey" type="button" style="position: absolute; right: 15px; top: 10px;">👁</button>
+        </div>
+        <button id="updateApiKeyBtn" style="margin-top: 8px; width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Update API Key</button>
+
+        <label for="roleDef">Role Definition</label>
+        <textarea id="roleDef" rows="3" placeholder="Define the assistant role...">You are an AI Learning Tutor chatbot. Your purpose is to help users learn new things by providing clear explanations, examples, and answering questions. You should be patient, encouraging, and knowledgeable.
+</textarea>
+
+
+        <label>Creativity Regulation</label>
+        <div class="slider-wrap">
+            <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+            <span id="tempValue">0.7</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="header">
+            <h3>Hello, I'm Learnix AI Tutor</h3>
+            <div class="user" id="userAvatar">
+                <img src="https://www.un.org/sites/un2.un.org/files/styles/large-article-image-style-16-9/public/field/image/azoulay_1.jpg" alt="User Avatar">
+                <span id="loginText">Login</span>
+                <button id="logoutBtn" style="display: none; margin-left: 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; padding: 5px 10px;">Logout</button>
+            </div>
+        </div>
+
+
+        <div id="chat-window"></div>
+    </div>
+    <div class="input-area">
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <input type="text" id="messageInput" placeholder="Type your message...">
+                <button id="sendBtn">Send</button>
+                <button id="clearBtn">🗑 Clear</button>
+            </div>
+        </div>
+    </div>
+    <!-- 弹框 -->
+    <div id="loginModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h4>Login Information</h4>
+            <label for="your-ID-number">ID</label>
+            <input type="text" id="your-ID-number" placeholder="your-ID-number">
+            <label for="your-major">Major</label>
+            <input type="text" id="your-major" placeholder="text">
+            <button id="loginBtn">Log in</button>
+            <button id="showRegisterModal" style="background: #28a745; color: white;">Register</button>
+            <button id="closeModal" style="background:#eee;color:#333;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registerModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h4>Register New User</h4>
+            <label for="reg-name">Name</label>
+            <input type="text" id="reg-name" placeholder="Your Name">
+            <label for="reg-id">ID</label>
+            <input type="text" id="reg-id" placeholder="Your ID Number">
+            <label for="reg-major">Major</label>
+            <input type="text" id="reg-major" placeholder="Your Major">
+            <button id="registerBtn">Register</button>
+            <button id="closeRegisterModal" style="background:#eee;color:#333;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div id="userDetailsModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+            <h4>User Details</h4>
+            <label for="user-id-display">ID</label>
+            <input type="text" id="user-id-display" disabled>
+            <label for="user-name">Name</label>
+            <input type="text" id="user-name" placeholder="Your Name">
+            <label for="user-major">Major</label>
+            <input type="text" id="user-major" placeholder="Your Major">
+            <button id="updateUserBtn">Update</button>
+            <button id="logoutFromDetailsBtn" style="background: #dc3545; color: white;">Logout</button>
+            <button id="closeUserDetailsModal" style="background:#eee;color:#333;">Cancel</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
+    <script>
+        // 头像点击弹窗
+        document.getElementById('userAvatar').onclick = function () {
+            document.getElementById('loginModal').style.display = 'flex';
+        };
+        document.getElementById('closeModal').onclick = function () {
+            document.getElementById('loginModal').style.display = 'none';
+        };
+        // 可选: ESC关闭
+        window.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') document.getElementById('loginModal').style.display = 'none';
+        });
+    </script>
+</body>
+
+</html>
