@@ -167,6 +167,10 @@ body {
   transition: background 0.2s;
 }
 
+.message p {
+  margin: 0;
+}
+
 .message.user {
   background-color: #eaf3ff;
   align-self: flex-end;

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learnix AI Tutor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='chatbot.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         #loading {
             text-align: center;
@@ -66,6 +67,7 @@
                 <input type="text" id="messageInput" placeholder="Type your message...">
                 <button id="sendBtn">Send</button>
                 <button id="clearBtn">🗑 Clear</button>
+                <button id="newChatBtn">✨ New Chat</button>
             </div>
         </div>
     </div>

@@ -1,7 +1,7 @@
 // ✅ Optimized chatbot.js - Clean, high-performance version
 console.log("✅ chatbot.js loaded");
 
-let messages = JSON.parse(localStorage.getItem("chatMessages")) || [];
+let messages = [];
 
 window.addEventListener("DOMContentLoaded", () => {
   const chatWindow = document.getElementById("chat-window");
@@ -15,6 +15,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const studentIdInput = document.getElementById("your-ID-number");
   const majorInput = document.getElementById("your-major");
   const loginBtn = document.getElementById("loginBtn");
+  const newChatBtn = document.getElementById("newChatBtn");
 
   apiKeyInput.value = localStorage.getItem("apiKey") || "";
 
@@ -23,9 +24,11 @@ window.addEventListener("DOMContentLoaded", () => {
   tempSlider.addEventListener("input", () => {
     tempValue.textContent = tempSlider.value;
   });
-  //登录
+
+  // Login event
   loginBtn.addEventListener("click", login);
   document.getElementById("logoutBtn").addEventListener("click", logout);
+
   async function login() {
     const student_id = studentIdInput.value;
     const major = majorInput.value;
@@ -54,11 +57,13 @@ window.addEventListener("DOMContentLoaded", () => {
     alert("登录成功");
     localStorage.setItem("user", JSON.stringify(data.user));
     updateLoginStatus();
+    loadChatHistory();
   }
 
   function logout() {
     localStorage.removeItem("user");
     updateLoginStatus();
+    clearChat();
     alert("You have been logged out.");
   }
 
@@ -97,12 +102,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Initial check
   updateLoginStatus();
+  loadChatHistory();
+
   // Event bindings
   sendBtn.addEventListener("click", sendMessage);
   messageInput.addEventListener("keypress", (e) => {
     if (e.key === "Enter") sendMessage();
   });
   clearBtn.addEventListener("click", clearChat);
+  newChatBtn.addEventListener("click", newChat);
 
   // Toolbar actions
   setTimeout(() => {
@@ -273,12 +281,18 @@ window.addEventListener("DOMContentLoaded", () => {
   function appendMessage(text, type) {
     const div = document.createElement("div");
     div.className = "message " + type;
-    div.textContent = text;
+    if (type === "bot" || type === "assistant") {
+      div.innerHTML = marked.parse(text);
+    } else {
+      div.textContent = text;
+    }
     chatWindow.appendChild(div);
     chatWindow.scrollTop = chatWindow.scrollHeight;
 
-    messages.push({ text, type });
-    localStorage.setItem("chatMessages", JSON.stringify(messages));
+    if (type !== 'system') {
+        messages.push({ role: type, content: text });
+        localStorage.setItem("chatMessages", JSON.stringify(messages));
+    }
   }
 
   function removeLoading() {
@@ -291,6 +305,25 @@ window.addEventListener("DOMContentLoaded", () => {
     messages = [];
     chatWindow.innerHTML = "";
   }
+
+  function newChat() {
+      clearChat();
+      appendMessage("Starting a new chat...", "system")
+  }
+
+  async function loadChatHistory() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) return;
+
+      const res = await fetch(`http://127.0.0.1:5001/history?userId=${user.student_id}`);
+      if (res.ok) {
+          const history = await res.json();
+          messages = history;
+          chatWindow.innerHTML = '';
+          messages.forEach(msg => appendMessage(msg.content, msg.role));
+      }
+  }
+
   document.getElementById("toggleKey").addEventListener("click", () => {
     const input = document.getElementById("apiKey");
     input.type = input.type === "password" ? "text" : "password";
