@@ -104,7 +104,7 @@ def get_user_api_key(user_id):
 
     try:
         cursor.execute(
-            f"SELECT api_key FROM users WHERE id = {placeholder}", (user_id,)
+            f"SELECT api_key FROM users WHERE student_id = {placeholder}", (user_id,)
         )
         result = cursor.fetchone()
         return result["api_key"] if result and result["api_key"] else None
@@ -258,26 +258,62 @@ def log_interaction():
         conn.close()
 
 
-@app.route("/login", methods=["POST"])
-def login():
+@app.route("/register", methods=["POST"])
+def register():
     data = request.get_json()
-    user_id = data.get("id")
+    student_id = data.get("student_id")
+    name = data.get("name")
     major = data.get("major")
+    api_key = data.get("api_key")  # Optional API key
 
-    if not user_id or not major:
-        return jsonify({"error": "ID and major are required"}), 400
+    if not student_id or not name or not major:
+        return jsonify({"error": "All fields are required"}), 400
 
     conn = get_db_connection()
     if not conn:
         return jsonify({"error": "Database connection failed"}), 500
 
     cursor = conn.cursor()
+    placeholder = get_db_placeholder()
 
     try:
-        placeholder = get_db_placeholder()
         cursor.execute(
-            f"SELECT id, name, major, api_key FROM users WHERE id = {placeholder} AND major = {placeholder}",
-            (user_id, major),
+            "INSERT INTO users (student_id, name, major, api_key) VALUES (?, ?, ?, ?)",
+            (student_id, name, major, api_key),
+        )
+        conn.commit()
+        return jsonify({"status": "success", "message": "User registered successfully"})
+    except Exception as e:
+        conn.rollback()
+        if "UNIQUE constraint failed" in str(e):
+            return jsonify({"error": "Student ID already exists"}), 409
+        print("Registration error:", e)
+        return jsonify({"error": "Internal server error"}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    student_id = data.get("student_id")
+    major = data.get("major")
+
+    if not student_id or not major:
+        return jsonify({"error": "Student ID and major are required"}), 400
+
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    cursor = conn.cursor()
+    placeholder = get_db_placeholder()
+
+    try:
+        cursor.execute(
+            f"SELECT student_id, name, major, api_key FROM users WHERE student_id = {placeholder} AND major = {placeholder}",
+            (student_id, major),
         )
         user = cursor.fetchone()
 
@@ -286,7 +322,7 @@ def login():
                 {
                     "success": True,
                     "user": {
-                        "id": user["id"],
+                        "student_id": user["student_id"],
                         "name": user["name"],
                         "major": user["major"],
                         "api_key": user["api_key"],
@@ -306,17 +342,17 @@ def login():
 @app.route("/update_user", methods=["POST"])
 def update_user():
     data = request.get_json()
-    user_id = data.get("id")
+    student_id = data.get("student_id")
     name = data.get("name")
     major = data.get("major")
 
-    if not user_id or not name or not major:
+    if not student_id or not name or not major:
         return jsonify({"error": "All fields are required"}), 400
 
     try:
-        user_id = int(user_id)
+        student_id = int(student_id)
     except (ValueError, TypeError):
-        return jsonify({"error": "Invalid user ID"}), 400
+        return jsonify({"error": "Invalid student ID"}), 400
 
     conn = get_db_connection()
     if not conn:
@@ -327,8 +363,8 @@ def update_user():
 
     try:
         cursor.execute(
-            f"UPDATE users SET name = {placeholder}, major = {placeholder} WHERE id = {placeholder}",
-            (name, major, user_id),
+            f"UPDATE users SET name = {placeholder}, major = {placeholder} WHERE student_id = {placeholder}",
+            (name, major, student_id),
         )
         conn.commit()
 
@@ -350,11 +386,11 @@ def update_user():
 @app.route("/update_api_key", methods=["POST"])
 def update_api_key():
     data = request.get_json()
-    user_id = data.get("id")
+    student_id = data.get("student_id")
     api_key = data.get("api_key")
 
-    if not user_id or not api_key:
-        return jsonify({"error": "Missing user ID or API key"}), 400
+    if not student_id or not api_key:
+        return jsonify({"error": "Missing student ID or API key"}), 400
 
     if not api_key.startswith("sk-"):
         return jsonify({"error": "Invalid API key format. Must start with 'sk-'"}), 400
@@ -368,8 +404,8 @@ def update_api_key():
     try:
         placeholder = get_db_placeholder()
         cursor.execute(
-            f"UPDATE users SET api_key = {placeholder} WHERE id = {placeholder}",
-            (api_key, user_id),
+            f"UPDATE users SET api_key = {placeholder} WHERE student_id = {placeholder}",
+            (api_key, student_id),
         )
         conn.commit()
 

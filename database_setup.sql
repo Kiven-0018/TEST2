@@ -3,6 +3,7 @@
 
 DROP TABLE IF EXISTS logs;
 CREATE TABLE logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     start_time DATETIME NOT NULL,
     end_time DATETIME DEFAULT NULL,
@@ -28,8 +29,8 @@ CREATE TABLE interactions (
 
 DROP TABLE IF EXISTS users;
 CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
+    student_id INTEGER PRIMARY KEY,
     name TEXT,
-    major TEXT,  -- Used for login verification
-    api_key TEXT  -- Store user's OpenAI API key
+    major TEXT,
+    api_key TEXT
 );
