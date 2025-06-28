@@ -181,9 +181,6 @@ print(
 )
 
 
-SYSTEM_PROMPT = "Your name is Learnix AI. You are a helpful tutor AI who assists users with their questions."
-
-
 def get_chat_history(user_id):
     """Get last 10 chat logs for a user."""
     if not user_id:
@@ -223,10 +220,8 @@ def get_chat_history(user_id):
 def chat_endpoint():
     data = request.get_json()
     user_msg = data.get("message", "")
-    role = data.get("role", "你是一个AI助手")
     temp = float(data.get("temperature", 1))
     user_id = data.get("userId")
-    system_prompt = SYSTEM_PROMPT
 
     # Use environment variable API key only
     final_api_key = OPENAI_API_KEY
@@ -254,7 +249,7 @@ def chat_endpoint():
             # Generate adaptive prompt using the new generator
             adaptive_prompt = generate_adaptive_prompt(user_msg, user_style, user_id)
             logging.info(
-                f"🚀 Generated adaptive prompt for User {user_id} ({user_style})"
+                f"🚀 Generated adaptive prompt for User {user_id} ({user_style}): {adaptive_prompt}"
             )
         else:
             # Fallback for users without ID
@@ -270,10 +265,8 @@ def chat_endpoint():
     # Prepend chat history to the messages
     history = get_chat_history(user_id)
 
-    # Use adaptive prompt instead of basic system prompt and role
     messages_for_api = history + [
-        {"role": "system", "content": system_prompt},
-        {"role": "system", "content": adaptive_prompt},  # 🎯 Use adaptive prompt here
+        {"role": "system", "content": adaptive_prompt},
         {"role": "user", "content": user_msg},
     ]
     client = get_client(final_api_key)

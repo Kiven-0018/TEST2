@@ -20,7 +20,9 @@ class AdaptivePromptGenerator:
 
     def __init__(self):
         self.templates = PROMPT_TEMPLATES
-        self.default_style = "Read/Write"  # Fallback style as per PRD requirements
+        self.default_style = (
+            "General"  # Fallback style for unrecognized or missing styles
+        )
 
         # Style normalization mapping for database consistency
         self.style_normalization = {
@@ -91,6 +93,9 @@ class AdaptivePromptGenerator:
         # Get appropriate template with fallback safety
         template = self.templates.get(
             normalized_style, self.templates[self.default_style]
+        )
+        logging.info(
+            f"Selected template for style '{normalized_style}':\n---\n{template[:200]}...\n---"
         )
 
         # Generate the final prompt by inserting user query
