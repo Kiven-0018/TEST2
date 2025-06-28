@@ -64,19 +64,29 @@ window.addEventListener("DOMContentLoaded", () => {
     alert("You have been logged out.");
   }
 
-  function updateLoginStatus() {
+  async function updateLoginStatus() {
     const user = JSON.parse(localStorage.getItem("user"));
-    const loginText = document.getElementById("loginText");
+    const sidebarUserInfo = document.getElementById("sidebarUserInfo");
     const logoutBtn = document.getElementById("logoutBtn");
     const userAvatar = document.getElementById("userAvatar");
 
     if (user) {
-      loginText.textContent = `User: ${user.student_id}`;
+      // Display user info from local storage
+      const learningStyle = user.learning_style || "Unknown";
+      const userInfoHTML = `
+        <div><strong>User ID:</strong> ${user.student_id}</div>
+        <div><strong>Learning Style:</strong> <span class="learning-style">${learningStyle}</span></div>
+      `;
+      sidebarUserInfo.innerHTML = userInfoHTML;
+      sidebarUserInfo.style.display = "block";
       logoutBtn.style.display = "inline-block";
       userAvatar.removeEventListener("click", showLoginModal);
       userAvatar.addEventListener("click", showUserDetailsModal);
     } else {
-      loginText.textContent = "Login";
+      if (sidebarUserInfo) {
+        sidebarUserInfo.innerHTML = "";
+        sidebarUserInfo.style.display = "none";
+      }
       logoutBtn.style.display = "none";
       userAvatar.addEventListener("click", showLoginModal);
       userAvatar.removeEventListener("click", showUserDetailsModal);
@@ -174,15 +184,18 @@ window.addEventListener("DOMContentLoaded", () => {
     appendMessage("🤖 Generating answers...", "bot-loading");
 
     try {
+      const payload = {
+        role: roleDef.value,
+        temperature: parseFloat(tempSlider.value),
+        message: text,
+        userId: user.student_id,
+      };
+      console.log("Sending payload to /chat:", JSON.stringify(payload, null, 2));
+
       const res = await fetch("http://127.0.0.1:5001/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role: roleDef.value,
-          temperature: parseFloat(tempSlider.value),
-          message: text,
-          userId: user.student_id,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const endTime = new Date().getTime(); // 获取结束时间

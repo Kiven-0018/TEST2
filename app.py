@@ -7,9 +7,16 @@ from dotenv import load_dotenv
 import httpx
 import pandas as pd
 from pathlib import Path
+from adaptive_generator import generate_adaptive_prompt, adaptive_generator
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging for VARK user type debugging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 
 app = Flask(__name__)
 
@@ -50,19 +57,40 @@ def import_csv_to_sqlite(csv_path: str, db_path: str):
     conn.close()
 
 
-def get_user_style(user_id: int) -> list:
+def get_user_style(user_id: int) -> str:
+    """
+    Enhanced function to get user's primary learning style for adaptive prompts
+    Returns primary style as string for compatibility with adaptive generator
+    """
     db_path = DATABASE_CONFIG["sqlite"]["path"]
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        "SELECT learning_style FROM vark_results WHERE user_id = ?", (user_id,)
+
+    try:
+        logging.info(f"Querying for user_id: {user_id} (type: {type(user_id)})")
+        cursor.execute(
+            "SELECT learning_style FROM users WHERE student_id = ?", (user_id,)
+        )
+        row = cursor.fetchone()
+        logging.info(f"DB row result: {row}")
+
+        if row and row[0]:
+            learning_style = row[0].strip()
+            logging.info(
+                f"🎯 Retrieved learning style from users table for User {user_id}: {learning_style}"
+            )
+            return learning_style
+
+    except Exception as e:
+        logging.error(f"❌ Error retrieving learning style for User {user_id}: {e}")
+    finally:
+        conn.close()
+
+    # Default fallback
+    logging.warning(
+        f"⚠️ No learning style found for User {user_id}, using default: Read/Write"
     )
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return []
-    raw = [s.strip() for s in row[0].split(",")]
-    return [STYLE_MAP.get(s) for s in raw if s in STYLE_MAP]
+    return "Read/Write"
 
 
 def generate_prompt(message, style):
@@ -219,11 +247,33 @@ def chat_endpoint():
     if not data or "message" not in data:
         return jsonify({"error": "Invalid request"}), 400
 
+    # 🎯 ADAPTIVE PROMPT GENERATION - Get user's learning style and generate adaptive prompt
+    try:
+        if user_id:
+            user_style = get_user_style(user_id)
+            # Generate adaptive prompt using the new generator
+            adaptive_prompt = generate_adaptive_prompt(user_msg, user_style, user_id)
+            logging.info(
+                f"🚀 Generated adaptive prompt for User {user_id} ({user_style})"
+            )
+        else:
+            # Fallback for users without ID
+            adaptive_prompt = generate_adaptive_prompt(user_msg, "Read/Write", None)
+            logging.info("🚀 Generated default adaptive prompt for anonymous user")
+    except Exception as e:
+        logging.error(f"❌ Error generating adaptive prompt: {e}")
+        # Fallback to basic prompt
+        adaptive_prompt = (
+            f"You are Learnix AI, a helpful tutor. Answer this question: {user_msg}"
+        )
+
     # Prepend chat history to the messages
     history = get_chat_history(user_id)
+
+    # Use adaptive prompt instead of basic system prompt and role
     messages_for_api = history + [
         {"role": "system", "content": system_prompt},
-        {"role": "system", "content": role},
+        {"role": "system", "content": adaptive_prompt},  # 🎯 Use adaptive prompt here
         {"role": "user", "content": user_msg},
     ]
     client = get_client(final_api_key)
@@ -241,6 +291,7 @@ def chat_endpoint():
         return jsonify({"reply": reply})
     except Exception as e:
         # Log error (and potentially return error info)
+        logging.error(f"❌ OpenAI API call error: {e}")
         print("OpenAI API call error:", e)
         return jsonify({"error": str(e)}), 500
 
@@ -396,7 +447,8 @@ def login():
                 }
             )
 
-        # User is fully registered, return their data
+        # User is fully registered, get learning style and return all data
+        learning_style = get_user_style(user["student_id"])
         return jsonify(
             {
                 "success": True,
@@ -404,6 +456,7 @@ def login():
                     "student_id": user["student_id"],
                     "name": user["name"],
                     "major": user["major"],
+                    "learning_style": learning_style,
                 },
             }
         )
@@ -465,6 +518,26 @@ def history():
     user_id = request.args.get("userId")
     history = get_chat_history(user_id)
     return jsonify(history)
+
+
+@app.route("/user_learning_style", methods=["GET"])
+def user_learning_style():
+    user_id = request.args.get("userId")
+
+    if not user_id:
+        return jsonify({"error": "userId parameter is required"}), 400
+
+    try:
+        user_id = int(user_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid userId"}), 400
+
+    learning_style = get_learning_style(user_id)
+
+    if learning_style:
+        return jsonify({"learning_style": learning_style})
+    else:
+        return jsonify({"learning_style": "Unknown"})
 
 
 if __name__ == "__main__":

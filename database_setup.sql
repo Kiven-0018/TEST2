@@ -32,7 +32,8 @@ CREATE TABLE users (
     student_id INTEGER PRIMARY KEY,
     name TEXT,
     major TEXT,
-    api_key TEXT
+    api_key TEXT,
+    learning_style TEXT
 );
 
 DROP TABLE IF EXISTS vark_results;
