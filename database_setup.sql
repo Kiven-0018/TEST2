@@ -34,3 +34,14 @@ CREATE TABLE users (
     major TEXT,
     api_key TEXT
 );
+
+DROP TABLE IF EXISTS vark_results;
+CREATE TABLE vark_results (
+  user_id INTEGER,
+  full_name TEXT,
+  visual INTEGER,
+  aural INTEGER,
+  readwrite INTEGER,
+  kinesthetic INTEGER,
+  learning_style TEXT
+);

@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
 from flask import Flask, render_template, request, jsonify, session
 import openai
 import os
 import sqlite3
 from dotenv import load_dotenv
 import httpx
-
+import pandas as pd
+from pathlib import Path
 # Load environment variables
 load_dotenv()
 
@@ -23,6 +25,66 @@ DATABASE_CONFIG = {
         "database": "chat_logs",
     },
 }
+# vark function
+STYLE_MAP = {
+    "V": "visual",
+    "A": "aural",
+    "R": "readwrite",
+    "K": "kinesthetic"
+}
+
+def import_csv_to_sqlite(csv_path: str, db_path: str):
+    df = pd.read_csv(csv_path)
+    conn = sqlite3.connect(db_path)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS vark_results (
+            user_id INTEGER PRIMARY KEY,
+            visual INTEGER,
+            aural INTEGER,
+            read_write INTEGER,
+            kinesthetic INTEGER,
+            learning_style TEXT
+        )
+    """)
+    df.to_sql('vark_results', conn, if_exists='replace', index=False)
+    conn.commit()
+    conn.close()
+
+def get_user_style(user_id: int) -> list:
+    db_path = DATABASE_CONFIG['sqlite']['path']
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT learning_style FROM vark_results WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return []
+    raw = [s.strip() for s in row[0].split(',')]
+    return [STYLE_MAP.get(s) for s in raw if s in STYLE_MAP]
+
+def generate_prompt(message, style):
+    if style == "visual":
+        return f"You're a visual-style AI tutor. Use diagrams, bulleted lists, and spatial metaphors.\nQ: {message}\nA:"
+    elif style == "aural":
+        return f"You're an auditory-style AI tutor. Use storytelling, voice tones, and conversation.\nQ: {message}\nA:"
+    elif style == "readwrite":
+        return f"You're a read/write-style AI tutor. Use summaries, headings, lists, and structured text.\nQ: {message}\nA:"
+    elif style == "kinesthetic":
+        return f"You're a kinesthetic-style AI tutor. Use interactive examples, real-world analogies, and hands-on suggestions.\nQ: {message}\nA:"
+    else:
+        return f"You are a helpful AI tutor. Answer the question:\nQ: {message}\nA:"
+
+def init_vark_data():
+    db_path = DATABASE_CONFIG['sqlite']['path']
+    csv_path = 'vark_results.csv'
+    if Path(csv_path).exists():
+        import_csv_to_sqlite(csv_path, db_path)
+    else:
+        print(f"⚠️ CSV 文件未找到：{csv_path}，跳过导入 VARK 数据")
+
+
+# Initialize VARK
+init_vark_data()
 
 
 def get_db_connection():
