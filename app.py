@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import httpx
 import pandas as pd
 from pathlib import Path
+
 # Load environment variables
 load_dotenv()
 
@@ -26,17 +27,14 @@ DATABASE_CONFIG = {
     },
 }
 # vark function
-STYLE_MAP = {
-    "V": "visual",
-    "A": "aural",
-    "R": "readwrite",
-    "K": "kinesthetic"
-}
+STYLE_MAP = {"V": "visual", "A": "aural", "R": "readwrite", "K": "kinesthetic"}
+
 
 def import_csv_to_sqlite(csv_path: str, db_path: str):
     df = pd.read_csv(csv_path)
     conn = sqlite3.connect(db_path)
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS vark_results (
             user_id INTEGER PRIMARY KEY,
             visual INTEGER,
@@ -45,22 +43,27 @@ def import_csv_to_sqlite(csv_path: str, db_path: str):
             kinesthetic INTEGER,
             learning_style TEXT
         )
-    """)
-    df.to_sql('vark_results', conn, if_exists='replace', index=False)
+    """
+    )
+    df.to_sql("vark_results", conn, if_exists="replace", index=False)
     conn.commit()
     conn.close()
 
+
 def get_user_style(user_id: int) -> list:
-    db_path = DATABASE_CONFIG['sqlite']['path']
+    db_path = DATABASE_CONFIG["sqlite"]["path"]
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT learning_style FROM vark_results WHERE user_id = ?", (user_id,))
+    cursor.execute(
+        "SELECT learning_style FROM vark_results WHERE user_id = ?", (user_id,)
+    )
     row = cursor.fetchone()
     conn.close()
     if not row:
         return []
-    raw = [s.strip() for s in row[0].split(',')]
+    raw = [s.strip() for s in row[0].split(",")]
     return [STYLE_MAP.get(s) for s in raw if s in STYLE_MAP]
+
 
 def generate_prompt(message, style):
     if style == "visual":
@@ -74,9 +77,10 @@ def generate_prompt(message, style):
     else:
         return f"You are a helpful AI tutor. Answer the question:\nQ: {message}\nA:"
 
+
 def init_vark_data():
-    db_path = DATABASE_CONFIG['sqlite']['path']
-    csv_path = 'vark_results.csv'
+    db_path = DATABASE_CONFIG["sqlite"]["path"]
+    csv_path = "vark_results.csv"
     if Path(csv_path).exists():
         import_csv_to_sqlite(csv_path, db_path)
     else:
@@ -324,12 +328,11 @@ def log_interaction():
 def register():
     data = request.get_json()
     student_id = data.get("student_id")
-    name = data.get("name")
     major = data.get("major")
     api_key = data.get("api_key")  # Optional API key
 
-    if not student_id or not name or not major:
-        return jsonify({"error": "All fields are required"}), 400
+    if not student_id:
+        return jsonify({"error": "Student ID is required"}), 400
 
     conn = get_db_connection()
     if not conn:
@@ -339,16 +342,47 @@ def register():
     placeholder = get_db_placeholder()
 
     try:
+        # Check if user exists and get their data
         cursor.execute(
-            "INSERT INTO users (student_id, name, major, api_key) VALUES (?, ?, ?, ?)",
-            (student_id, name, major, api_key),
+            f"SELECT student_id, name, major FROM users WHERE student_id = {placeholder}",
+            (student_id,),
+        )
+        user = cursor.fetchone()
+
+        if not user:
+            return jsonify({"error": "User not pre-registered"}), 404
+
+        # If user already has a major, they're already registered
+        if user["major"]:
+            return jsonify({"error": "User already registered"}), 400
+
+        # If no major provided, prompt for it
+        if not major:
+            return jsonify(
+                {
+                    "require_major": True,
+                    "student_id": user["student_id"],
+                    "name": user["name"],
+                    "message": "Please provide your major to complete registration",
+                }
+            )
+
+        # Update the user's major and api_key
+        cursor.execute(
+            f"UPDATE users SET major = {placeholder}, api_key = {placeholder} WHERE student_id = {placeholder}",
+            (major, api_key, student_id),
         )
         conn.commit()
-        return jsonify({"status": "success", "message": "User registered successfully"})
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Registration completed successfully! You can now log in.",
+            }
+        )
+
     except Exception as e:
         conn.rollback()
-        if "UNIQUE constraint failed" in str(e):
-            return jsonify({"error": "Student ID already exists"}), 409
         print("Registration error:", e)
         return jsonify({"error": "Internal server error"}), 500
     finally:
@@ -360,10 +394,9 @@ def register():
 def login():
     data = request.get_json()
     student_id = data.get("student_id")
-    major = data.get("major")
 
-    if not student_id or not major:
-        return jsonify({"error": "Student ID and major are required"}), 400
+    if not student_id:
+        return jsonify({"error": "Student ID is required"}), 400
 
     conn = get_db_connection()
     if not conn:
@@ -374,25 +407,36 @@ def login():
 
     try:
         cursor.execute(
-            f"SELECT student_id, name, major, api_key FROM users WHERE student_id = {placeholder} AND major = {placeholder}",
-            (student_id, major),
+            f"SELECT student_id, name, major, api_key FROM users WHERE student_id = {placeholder}",
+            (student_id,),
         )
         user = cursor.fetchone()
 
-        if user:
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # If user doesn't have a major, they need to complete registration
+        if user["major"] is None:
             return jsonify(
                 {
-                    "success": True,
-                    "user": {
-                        "student_id": user["student_id"],
-                        "name": user["name"],
-                        "major": user["major"],
-                        "api_key": user["api_key"],
-                    },
+                    "require_registration": True,
+                    "message": "Please complete your registration by providing your major",
                 }
             )
-        else:
-            return jsonify({"error": "Invalid credentials"}), 401
+
+        # User is fully registered, return their data
+        return jsonify(
+            {
+                "success": True,
+                "user": {
+                    "student_id": user["student_id"],
+                    "name": user["name"],
+                    "major": user["major"],
+                    "api_key": user["api_key"],
+                },
+            }
+        )
+
     except Exception as e:
         print("Login error:", e)
         return jsonify({"error": str(e)}), 500
