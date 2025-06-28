@@ -156,32 +156,6 @@ print(
 SYSTEM_PROMPT = "Your name is Learnix AI. You are a helpful tutor AI who assists users with their questions."
 
 
-def get_user_api_key(user_id):
-    """Get user's stored API key from database"""
-    if not user_id:
-        return None
-
-    conn = get_db_connection()
-    if not conn:
-        return None
-
-    cursor = conn.cursor()
-    placeholder = get_db_placeholder()
-
-    try:
-        cursor.execute(
-            f"SELECT api_key FROM users WHERE student_id = {placeholder}", (user_id,)
-        )
-        result = cursor.fetchone()
-        return result["api_key"] if result and result["api_key"] else None
-    except Exception as e:
-        print(f"Error fetching user API key: {e}")
-        return None
-    finally:
-        cursor.close()
-        conn.close()
-
-
 def get_chat_history(user_id):
     """Get last 10 chat logs for a user."""
     if not user_id:
@@ -223,12 +197,11 @@ def chat_endpoint():
     user_msg = data.get("message", "")
     role = data.get("role", "你是一个AI助手")
     temp = float(data.get("temperature", 1))
-    api_key = data.get("apiKey")
     user_id = data.get("userId")
     system_prompt = SYSTEM_PROMPT
 
-    # API Key Priority: 1. Provided in request, 2. User's stored key, 3. Environment variable
-    final_api_key = api_key or get_user_api_key(user_id) or OPENAI_API_KEY
+    # Use environment variable API key only
+    final_api_key = OPENAI_API_KEY
 
     if not final_api_key:
         return (
@@ -329,7 +302,6 @@ def register():
     data = request.get_json()
     student_id = data.get("student_id")
     major = data.get("major")
-    api_key = data.get("api_key")  # Optional API key
 
     if not student_id:
         return jsonify({"error": "Student ID is required"}), 400
@@ -367,10 +339,10 @@ def register():
                 }
             )
 
-        # Update the user's major and api_key
+        # Update the user's major
         cursor.execute(
-            f"UPDATE users SET major = {placeholder}, api_key = {placeholder} WHERE student_id = {placeholder}",
-            (major, api_key, student_id),
+            f"UPDATE users SET major = {placeholder} WHERE student_id = {placeholder}",
+            (major, student_id),
         )
         conn.commit()
 
@@ -407,7 +379,7 @@ def login():
 
     try:
         cursor.execute(
-            f"SELECT student_id, name, major, api_key FROM users WHERE student_id = {placeholder}",
+            f"SELECT student_id, name, major FROM users WHERE student_id = {placeholder}",
             (student_id,),
         )
         user = cursor.fetchone()
@@ -432,7 +404,6 @@ def login():
                     "student_id": user["student_id"],
                     "name": user["name"],
                     "major": user["major"],
-                    "api_key": user["api_key"],
                 },
             }
         )
@@ -483,45 +454,6 @@ def update_user():
     except Exception as e:
         conn.rollback()
         print("Update user error:", e)
-        return jsonify({"error": "Internal server error"}), 500
-    finally:
-        cursor.close()
-        conn.close()
-
-
-@app.route("/update_api_key", methods=["POST"])
-def update_api_key():
-    data = request.get_json()
-    student_id = data.get("student_id")
-    api_key = data.get("api_key")
-
-    if not student_id or not api_key:
-        return jsonify({"error": "Missing student ID or API key"}), 400
-
-    if not api_key.startswith("sk-"):
-        return jsonify({"error": "Invalid API key format. Must start with 'sk-'"}), 400
-
-    conn = get_db_connection()
-    if not conn:
-        return jsonify({"error": "Database connection failed"}), 500
-
-    cursor = conn.cursor()
-
-    try:
-        placeholder = get_db_placeholder()
-        cursor.execute(
-            f"UPDATE users SET api_key = {placeholder} WHERE student_id = {placeholder}",
-            (api_key, student_id),
-        )
-        conn.commit()
-
-        if cursor.rowcount == 0:
-            return jsonify({"error": "User not found"}), 404
-
-        return jsonify({"status": "success", "message": "API key updated successfully"})
-    except Exception as e:
-        conn.rollback()
-        print("Update API key error:", e)
         return jsonify({"error": "Internal server error"}), 500
     finally:
         cursor.close()

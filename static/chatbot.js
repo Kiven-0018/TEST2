@@ -6,7 +6,6 @@ let messages = [];
 window.addEventListener("DOMContentLoaded", () => {
   const chatWindow = document.getElementById("chat-window");
   const messageInput = document.getElementById("messageInput");
-  const apiKeyInput = document.getElementById("apiKey");
   const sendBtn = document.getElementById("sendBtn");
   const clearBtn = document.getElementById("clearBtn");
   const roleDef = document.getElementById("roleDef");
@@ -16,8 +15,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const majorInput = document.getElementById("your-major");
   const loginBtn = document.getElementById("loginBtn");
   const newChatBtn = document.getElementById("newChatBtn");
-
-  apiKeyInput.value = localStorage.getItem("apiKey") || "";
 
   // Temperature display
   tempValue.textContent = tempSlider.value;
@@ -165,24 +162,9 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    apiKeyInput.value = user.api_key;
     const startTime = new Date().getTime(); // 获取开始时间
     const text = messageInput.value.trim();
     if (!text) return;
-
-    let apiKey = apiKeyInput.value.trim();
-    if (!apiKey) {
-      apiKey = localStorage.getItem("apiKey");
-    }
-
-    if (!apiKey || !apiKey.startsWith("sk-")) {
-      appendMessage(
-        "⚠️ Invalid API Key. Please enter a valid OpenAI key starting with sk-",
-        "bot"
-      );
-      return;
-    }
-    localStorage.setItem("apiKey", apiKey);
 
     appendMessage(text, "user");
     messageInput.value = "";
@@ -196,7 +178,6 @@ window.addEventListener("DOMContentLoaded", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiKey,
           role: roleDef.value,
           temperature: parseFloat(tempSlider.value),
           message: text,
@@ -324,65 +305,6 @@ window.addEventListener("DOMContentLoaded", () => {
       }
   }
 
-  document.getElementById("toggleKey").addEventListener("click", () => {
-    const input = document.getElementById("apiKey");
-    input.type = input.type === "password" ? "text" : "password";
-  });
-  // API Key Update functionality
-  async function updateApiKey() {
-    const users = localStorage.getItem("user");
-    if (!users) {
-      alert("请先登录");
-      return;
-    }
-
-    const user = JSON.parse(users);
-    const newApiKey = apiKeyInput.value.trim();
-
-    // Validate API key format
-    if (!newApiKey || !newApiKey.startsWith("sk-")) {
-      alert(
-        "Invalid API Key. Please enter a valid OpenAI key starting with sk-"
-      );
-      return;
-    }
-
-    try {
-      const res = await fetch("http://127.0.0.1:5001/update_api_key", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          student_id: user.student_id,
-          api_key: newApiKey,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        alert("Failed to update API key: " + (err.error || "Unknown error"));
-        return;
-      }
-
-      const data = await res.json();
-
-      // Update localStorage with new API key
-      user.api_key = newApiKey;
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("apiKey", newApiKey);
-
-      alert("API Key updated successfully!");
-      console.log("✅ API Key updated:", data.message);
-    } catch (err) {
-      console.error("❌ Update API Key error:", err);
-      alert("Network error: " + err.message);
-    }
-  }
-
-  // Add event listener for API key update (if update button exists)
-  const updateApiKeyBtn = document.getElementById("updateApiKeyBtn");
-  if (updateApiKeyBtn) {
-    updateApiKeyBtn.addEventListener("click", updateApiKey);
-  }
 
   // User details modal functionality
   document
@@ -452,7 +374,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const name = document.getElementById("reg-name").value;
     const student_id = document.getElementById("reg-id").value;
     const major = document.getElementById("reg-major").value;
-    const api_key = document.getElementById("reg-api-key").value;
 
     if (!name || !student_id || !major) {
       alert("Please fill in all required registration fields.");
@@ -462,7 +383,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const res = await fetch("http://127.0.0.1:5001/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, student_id, major, api_key }),
+      body: JSON.stringify({ name, student_id, major }),
     });
 
     if (!res.ok) {
@@ -476,11 +397,4 @@ window.addEventListener("DOMContentLoaded", () => {
     showLoginModal();
   });
 
-  // Alternative: Listen for Enter key in API key input field
-  apiKeyInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter" && e.ctrlKey) {
-      // Ctrl+Enter to update API key
-      updateApiKey();
-    }
-  });
 });
