@@ -133,4 +133,4 @@ A full-stack chatbot web application with persistent chat history, Markdown rend
 
 - For production, use HTTPS and secure session management.
 - To further customize Markdown rendering, edit `static/chatbot.css`.
-- For advanced features, extend the Flask backend and JS frontend as needed.
+- For advanced features, extend the Flask backend and JS frontend as needed.# TEST2
